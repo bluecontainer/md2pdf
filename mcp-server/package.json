@@ -1,0 +1,13 @@
+{
+  "name": "md2pdf-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server that converts Markdown files to PDF using the md2pdf Docker image",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  }
+}
