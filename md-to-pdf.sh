@@ -12,6 +12,7 @@
 #   MD_TO_PDF_CSS         Path to CSS stylesheet (default: pdf-style.css next to this script)
 #   MD_TO_PDF_WIDTH       Mermaid render width in px (default: 2400)
 #   MD_TO_PDF_ORIENTATION Page orientation: portrait or landscape (default: landscape)
+#   MD_TO_PDF_TITLE      Optional PDF title metadata
 #   MD_TO_PDF_FONT_SIZE  Base font size with unit, e.g. '9pt' (default: 11pt)
 
 set -e
@@ -119,8 +120,8 @@ convert_file() {
         "$processed"
         -o "$pdf_file"
         --pdf-engine=weasyprint
-        --metadata "title=$(echo "$file_stem" | tr '-' ' ' | sed 's/\b\w/\u&/g')"
     )
+    [[ -n "$MD_TO_PDF_TITLE" ]] && pandoc_args+=(--metadata "title=$MD_TO_PDF_TITLE")
     [[ -f "$CSS" ]] && pandoc_args+=(--css="$CSS")
     pandoc_args+=(--css="$OVERRIDE_CSS")
 

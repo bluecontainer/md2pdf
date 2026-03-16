@@ -57,6 +57,10 @@ server.tool(
       .enum(["portrait", "landscape"])
       .default("landscape")
       .describe("Page orientation (default: landscape)"),
+    title: z
+      .string()
+      .optional()
+      .describe("Optional PDF title. If omitted, no title metadata is added."),
     font_size: z
       .string()
       .optional()
@@ -66,7 +70,7 @@ server.tool(
       .optional()
       .describe("Optional absolute path to a custom CSS stylesheet"),
   },
-  async ({ files, orientation, font_size, css }) => {
+  async ({ files, orientation, title, font_size, css }) => {
     // Validate that all files exist and are .md
     for (const f of files) {
       if (!f.startsWith("/")) {
@@ -94,6 +98,7 @@ server.tool(
         process.env.MD_TO_PDF_CSS = css;
       }
       process.env.MD_TO_PDF_ORIENTATION = orientation;
+      if (title) process.env.MD_TO_PDF_TITLE = title;
       if (font_size) process.env.MD_TO_PDF_FONT_SIZE = font_size;
       args.push(...files);
     } else {
@@ -110,6 +115,7 @@ server.tool(
         args.push("-e", `MD_TO_PDF_CSS=${css}`);
       }
       args.push("-e", `MD_TO_PDF_ORIENTATION=${orientation}`);
+      if (title) args.push("-e", `MD_TO_PDF_TITLE=${title}`);
       if (font_size) args.push("-e", `MD_TO_PDF_FONT_SIZE=${font_size}`);
       args.push(IMAGE);
       args.push(...files);
