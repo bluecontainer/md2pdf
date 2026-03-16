@@ -3,8 +3,11 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { execFile } from "node:child_process";
 import { access, constants } from "node:fs/promises";
-import { resolve, dirname, basename } from "node:path";
+import { dirname } from "node:path";
 
+// When running inside the container, call md-to-pdf directly.
+// When running on the host, shell out to docker.
+const INSIDE_CONTAINER = process.env.MD2PDF_CONTAINER === "1";
 const IMAGE = process.env.MD2PDF_IMAGE || "ghcr.io/bluecontainer/md2pdf:latest";
 
 const server = new McpServer({
@@ -21,11 +24,11 @@ async function fileExists(path) {
   }
 }
 
-function runDocker(args) {
+function run(cmd, args) {
   return new Promise((resolve, reject) => {
-    execFile("docker", args, { timeout: 300_000 }, (error, stdout, stderr) => {
+    execFile(cmd, args, { timeout: 300_000 }, (error, stdout, stderr) => {
       if (error) {
-        reject(new Error(`docker failed (exit ${error.code}): ${stderr || error.message}`));
+        reject(new Error(`${cmd} failed (exit ${error.code}): ${stderr || error.message}`));
       } else {
         resolve({ stdout, stderr });
       }
@@ -64,26 +67,35 @@ server.tool(
       return { content: [{ type: "text", text: `Error: CSS file "${css}" does not exist` }] };
     }
 
-    // Collect all unique directories we need to mount
-    const dirs = [...new Set(files.map((f) => dirname(f)))];
-    if (css) dirs.push(dirname(css));
+    let cmd, args;
 
-    // Build docker run args
-    // Mount each unique directory into the container at the same path
-    const args = ["run", "--rm"];
-    for (const dir of dirs) {
-      args.push("-v", `${dir}:${dir}`);
+    if (INSIDE_CONTAINER) {
+      // Running inside the container — call md-to-pdf directly
+      cmd = "md-to-pdf";
+      args = [];
+      if (css) {
+        process.env.MD_TO_PDF_CSS = css;
+      }
+      args.push(...files);
+    } else {
+      // Running on the host — shell out to docker
+      const dirs = [...new Set(files.map((f) => dirname(f)))];
+      if (css) dirs.push(dirname(css));
+
+      cmd = "docker";
+      args = ["run", "--rm"];
+      for (const dir of dirs) {
+        args.push("-v", `${dir}:${dir}`);
+      }
+      if (css) {
+        args.push("-e", `MD_TO_PDF_CSS=${css}`);
+      }
+      args.push(IMAGE);
+      args.push(...files);
     }
-
-    if (css) {
-      args.push("-e", `MD_TO_PDF_CSS=${css}`);
-    }
-
-    args.push(IMAGE);
-    args.push(...files);
 
     try {
-      const { stdout, stderr } = await runDocker(args);
+      const { stdout, stderr } = await run(cmd, args);
       const output = [stdout, stderr].filter(Boolean).join("\n").trim();
       const pdfPaths = files.map((f) => f.replace(/\.md$/, ".pdf"));
 

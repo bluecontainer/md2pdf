@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "md2pdf": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "-v", "/home:/home", "ghcr.io/bluecontainer/md2pdf:latest"]
+    }
+  }
+}

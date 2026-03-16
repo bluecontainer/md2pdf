@@ -32,9 +32,15 @@ COPY pdf-style.css /usr/local/share/md-to-pdf/pdf-style.css
 COPY puppeteer-config.json /usr/local/share/md-to-pdf/puppeteer-config.json
 RUN chmod +x /usr/local/bin/md-to-pdf
 
-# Users can mount a custom stylesheet and point to it with MD_TO_PDF_CSS:
-#   -v /path/to/style.css:/style.css -e MD_TO_PDF_CSS=/style.css
+# Bundle the MCP server
+COPY mcp-server/package.json mcp-server/package-lock.json /opt/md2pdf-mcp/
+RUN cd /opt/md2pdf-mcp && npm ci --omit=dev
+COPY mcp-server/server.js /opt/md2pdf-mcp/
+
+# Signal to the MCP server that it's running inside the container
+ENV MD2PDF_CONTAINER=1
 
 WORKDIR /data
 
-ENTRYPOINT ["md-to-pdf"]
+# Default: run as MCP server (stdio). Override with "md-to-pdf" for CLI usage.
+ENTRYPOINT ["node", "/opt/md2pdf-mcp/server.js"]
