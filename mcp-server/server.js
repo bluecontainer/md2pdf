@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { access, constants } from "node:fs/promises";
 import { dirname } from "node:path";
 
@@ -26,9 +26,18 @@ async function fileExists(path) {
 
 function run(cmd, args) {
   return new Promise((resolve, reject) => {
-    execFile(cmd, args, { timeout: 300_000 }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error(`${cmd} failed (exit ${error.code}): ${stderr || error.message}`));
+    const child = spawn(cmd, args, {
+      timeout: 300_000,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (d) => (stdout += d));
+    child.stderr.on("data", (d) => (stderr += d));
+    child.on("error", (err) => reject(new Error(`${cmd} error: ${err.message}`)));
+    child.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`${cmd} failed (exit ${code}):\n${stderr || stdout}`));
       } else {
         resolve({ stdout, stderr });
       }
