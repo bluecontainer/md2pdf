@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { access, constants } from "node:fs/promises";
 import { dirname } from "node:path";
 
@@ -57,12 +57,16 @@ server.tool(
       .enum(["portrait", "landscape"])
       .default("landscape")
       .describe("Page orientation (default: landscape)"),
+    font_size: z
+      .string()
+      .optional()
+      .describe("Base font size with unit, e.g. '9pt', '11pt', '14px' (default: 11pt)"),
     css: z
       .string()
       .optional()
       .describe("Optional absolute path to a custom CSS stylesheet"),
   },
-  async ({ files, orientation, css }) => {
+  async ({ files, orientation, font_size, css }) => {
     // Validate that all files exist and are .md
     for (const f of files) {
       if (!f.startsWith("/")) {
@@ -90,6 +94,7 @@ server.tool(
         process.env.MD_TO_PDF_CSS = css;
       }
       process.env.MD_TO_PDF_ORIENTATION = orientation;
+      if (font_size) process.env.MD_TO_PDF_FONT_SIZE = font_size;
       args.push(...files);
     } else {
       // Running on the host — shell out to docker
@@ -105,6 +110,7 @@ server.tool(
         args.push("-e", `MD_TO_PDF_CSS=${css}`);
       }
       args.push("-e", `MD_TO_PDF_ORIENTATION=${orientation}`);
+      if (font_size) args.push("-e", `MD_TO_PDF_FONT_SIZE=${font_size}`);
       args.push(IMAGE);
       args.push(...files);
     }

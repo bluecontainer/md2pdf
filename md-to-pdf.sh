@@ -12,6 +12,7 @@
 #   MD_TO_PDF_CSS         Path to CSS stylesheet (default: pdf-style.css next to this script)
 #   MD_TO_PDF_WIDTH       Mermaid render width in px (default: 2400)
 #   MD_TO_PDF_ORIENTATION Page orientation: portrait or landscape (default: landscape)
+#   MD_TO_PDF_FONT_SIZE  Base font size with unit, e.g. '9pt' (default: 11pt)
 
 set -e
 
@@ -23,12 +24,14 @@ MERMAID_WIDTH="${MD_TO_PDF_WIDTH:-2400}"
 PUPPETEER_CFG="$SCRIPT_DIR/puppeteer-config.json"
 [[ ! -f "$PUPPETEER_CFG" ]] && PUPPETEER_CFG="/usr/local/share/md-to-pdf/puppeteer-config.json"
 ORIENTATION="${MD_TO_PDF_ORIENTATION:-landscape}"
+FONT_SIZE="${MD_TO_PDF_FONT_SIZE:-}"
 DIAGRAMS_DIR="$SCRIPT_DIR/diagrams"
 TEMP_DIR="$(mktemp -d)"
 
-# Generate orientation CSS override
-ORIENTATION_CSS="$TEMP_DIR/orientation.css"
-echo "@page { size: A4 $ORIENTATION; }" > "$ORIENTATION_CSS"
+# Generate CSS overrides
+OVERRIDE_CSS="$TEMP_DIR/override.css"
+echo "@page { size: A4 $ORIENTATION; }" > "$OVERRIDE_CSS"
+[[ -n "$FONT_SIZE" ]] && echo "body { font-size: $FONT_SIZE; }" >> "$OVERRIDE_CSS"
 
 cleanup() { rm -rf "$TEMP_DIR"; }
 trap cleanup EXIT
@@ -119,7 +122,7 @@ convert_file() {
         --metadata "title=$(echo "$file_stem" | tr '-' ' ' | sed 's/\b\w/\u&/g')"
     )
     [[ -f "$CSS" ]] && pandoc_args+=(--css="$CSS")
-    pandoc_args+=(--css="$ORIENTATION_CSS")
+    pandoc_args+=(--css="$OVERRIDE_CSS")
 
     pandoc "${pandoc_args[@]}" 2>&1 | grep -v "^ERROR: No anchor" >&2 || true
 
