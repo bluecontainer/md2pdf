@@ -47,18 +47,22 @@ function run(cmd, args) {
 
 server.tool(
   "convert_md_to_pdf",
-  "Convert one or more Markdown files to PDF. Renders Mermaid diagrams, applies professional styling, and outputs A4-landscape PDFs alongside the source files.",
+  "Convert one or more Markdown files to PDF. Renders Mermaid diagrams, applies professional styling, and outputs PDFs alongside the source files.",
   {
     files: z
       .array(z.string())
       .min(1)
       .describe("Absolute paths to the Markdown files to convert"),
+    orientation: z
+      .enum(["portrait", "landscape"])
+      .default("landscape")
+      .describe("Page orientation (default: landscape)"),
     css: z
       .string()
       .optional()
       .describe("Optional absolute path to a custom CSS stylesheet"),
   },
-  async ({ files, css }) => {
+  async ({ files, orientation, css }) => {
     // Validate that all files exist and are .md
     for (const f of files) {
       if (!f.startsWith("/")) {
@@ -85,6 +89,7 @@ server.tool(
       if (css) {
         process.env.MD_TO_PDF_CSS = css;
       }
+      process.env.MD_TO_PDF_ORIENTATION = orientation;
       args.push(...files);
     } else {
       // Running on the host — shell out to docker
@@ -99,6 +104,7 @@ server.tool(
       if (css) {
         args.push("-e", `MD_TO_PDF_CSS=${css}`);
       }
+      args.push("-e", `MD_TO_PDF_ORIENTATION=${orientation}`);
       args.push(IMAGE);
       args.push(...files);
     }
