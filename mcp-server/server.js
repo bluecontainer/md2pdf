@@ -5,6 +5,8 @@ import { execFile } from "node:child_process";
 import { access, constants } from "node:fs/promises";
 import { resolve, dirname, basename } from "node:path";
 
+const IMAGE = process.env.MD2PDF_IMAGE || "ghcr.io/bluecontainer/md2pdf:latest";
+
 const server = new McpServer({
   name: "md2pdf",
   version: "1.0.0",
@@ -77,7 +79,7 @@ server.tool(
       args.push("-e", `MD_TO_PDF_CSS=${css}`);
     }
 
-    args.push("md2pdf");
+    args.push(IMAGE);
     args.push(...files);
 
     try {
